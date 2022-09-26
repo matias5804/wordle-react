@@ -1,0 +1,433 @@
+
+
+Creamos db y agrego las 15 palabras de 5 letras 
+Instalamos - i json server --g
+Escribimos en la terminal json-server ./data/db.json --port 3001
+
+
+
+creo en app,js - hago el llamado con el use Effect usando fetch para llamada a la api
+
+function App() {
+  const [solution, setSolution] = useState(null)
+  
+  useEffect(() => {
+    fetch('http://localhost:3001/solutions')
+      .then(res => res.json())
+      .then(json => {
+        // random int between 0 & 14
+        const randomSolution = json[Math.floor(Math.random()*json.length)]
+        setSolution(randomSolution.word)
+      })
+  }, [setSolution])
+
+  return (
+    <div className="App">
+      <h1>Wordle (Lingo)</h1>
+      {solution && <div>Solution is: {solution}</div>}
+    </div>
+  )
+}
+
+- tengo abierto el puerto 3000 con la aplicacion 
+- tengo abierto el puerto 3001 json-server (api)
+- ** ya funciona la palabra aleatoria en pantalla 
+
+
+
+Video*3
+- Creamos un hook(useWorle.js en la carpeta hooks) donde vamos a meter la logica dcel juego, el cambio de colores en la letra  acertada
+- creamos una const useWordle = (solution) => { adentro 3 funciones de logica del juego }
+
+- adentro de la funcion useWordle, creamos una funcion que formatea una nueva conjetura cuando un usuario envia una palabra     const formatGuess = () => {}
+
+- creamos otra funcion que agrega una nueva conjetura al estado de conjeturas, actualiza el estado isCorrect si la conjetura es correcta y agrega uno al estado de giro   const addNewGuess = () => {} , si la palabra es correcta la va a almacenar en un estado  y agregamos unn al numero de turno para realizar un seguimiento de que turno esta activado actualmente
+
+- creamos una tercera funcion que maneja el evento keyup, rastrea la conjetura actual. y tambien si el usuario presiona enter, agrega la nueva suposición
+  const handleKeyup = () => {}
+
+- importamos useState en el archivo y creamos todos los estados que necesitamos
+
+  *const [turn, setTurn] = useState(0) - rastrea en que turno esta el usuario pór eso arranca en 0 , cada vez q se usa se agrega uno, cuando llega a 6 el juego se termina 
+
+  *const [currentGuess, setCurrentGuess] = useState('') - rastrea lo que el usuario esta escribiendo actualmente
+
+  *const [guesses, setGuesses] = useState([]) // each guess is an array - saca conjeturas, comienza vacio, a medida que el usuario envia una conjetura, la agregamos a esta matriz
+
+  *const [history, setHistory] = useState([]) // each guess is a string -  es el historial, arranca vacio, son cadenas simples, solo palabras, mientras que en el estado guesses, las cojeturas seran formateadas que incluyen el color de la letra tambien, el estado histori se usa para que el usuario no mande ninguna palabra duplicada 
+
+  *const [isCorrect, setIsCorrect] = useState(false)- muestra el estado correcto , comienza con un falso booleano, solo pasara a verdadero cuando el usuario gane, mas adelante se dispara un modal con un mensaje de "felicitaciones"
+
+- retornamos algunos valores de la const useWordle para usarlos mas adelante desde afuera del hook 
+	* return {turn, currentGuess, guesses, isCorrect, handleKeyup}
+
+Video*4
+- Vamos a permitir que el usuario escriba y vamos a rastrear lo ingresado por teclado para despues compararlo con la solucion 
+- Para rastrear vamos a agregar un detector de eventos de cubo, la funcion que vamos a activar es handleKeyup = () => {}
+
+- Creamos el componente Wordle.js - donde casi toda la interfaz del usuario esta dentro de este componente -
+
+- En App.js importamos el componente Wordle
+	*{solution && <Wordle solution={solution} /> - se genera solo una vez que tengamos una solucion 
+
+- Dentro de Wordle.js importo el hook useWordle y creo un const , y que acepta una palabra de solucion, se la pasamos en el hook
+	const { currentGuess, handleKeyup } = useWordle(solution)
+
+- Creamos un hook para poder activar una funcion cuando el componente se carga primero. Adentro un detector de eventos, que tiene un 'keyup', que va a activar la funcion handleKeyup. En el return, nercesitamos devolver una funcion de limpieza para desanexar el evento para que no agreguemos multiples eventos uno tras otro. Terminamos y pasamos una dependencia como segundo argumento=> [handleKeyup]
+
+	*  useEffect(() => {
+    			window.addEventListener('keyup', handleKeyup)
+
+    			return () => window.removeEventListener('keyup', handleKeyup)
+  		}, [handleKeyup])
+
+
+- Vamos al hook useWordle a la funcion handleKeyup, que recibe un evento(e) que va ser la {key}, hacemos una verificacion para que nos aseguremos que se escribe una letra de la A a la Z, esto lo hacemos con una expresion regular => /^[A-Za-z]$/ 
+Usamos el metodo test y pasamos la key como argumento
+Hacemos otra verificacion para decir que la suposicion actual debe ser inferior a 5 =>   if (currentGuess.length < 5){}
+-si eso sucede tenemos que actualizar el estado (currentGuess), tomara el valor actual de la conjetura y agregara uno mas. *setCurrentGuess(prev => prev + key)
+-- hay q hacer una funcionalidad para que se pueda eliminar una letra *	if (key === 'Backspace') {
+    										setCurrentGuess(prev => prev.slice(0, -1))
+									}
+ 
+
+	
+     *const handleKeyup = ({ key }) => {
+ 	 console.log('key pressed - ', key)
+	if (key === 'Backspace') {
+    		setCurrentGuess(prev => prev.slice(0, -1))
+    	    return
+  	}
+ 	if (/^[A-Za-z]$/.test(key)) {
+    	    if (currentGuess.length < 5) {
+      		setCurrentGuess(prev => prev + key)
+    	    }
+ 	 }
+      }
+
+- Vamos a la pagina Wordle, cambio el return de la funtion Wordle y genero el valor de la suposicion actual entre llaves, (lo que escriba se ve en la pantalla)
+
+
+ Video*5
+- Queremos ahcer que cuando el usuario escribe una palabra de 5 letras y presione enter, queremos enviar esa conjetura y verificarla, esta logica la vamos a hacer en la funcion handleKeyup() 
+
+	 * if (key === 'Enter') {
+    			// only add guess if turn is less than 5
+    		if (turn > 5) {
+      			console.log('you used all your guesses!')
+      			return
+    		}
+    			// do not allow duplicate words
+   	 	if (history.includes(currentGuess)) {
+      			console.log('you already tried that word.')
+      			return
+  		}
+    			// check word is 5 chars
+    		if (currentGuess.length !== 5) {
+      			console.log('word must be 5 chars.')
+      			return
+    		}
+    		formatGuess()
+  	    }
+
+- por ultimo llamamos a la funcion de suposicion =>  formatGuess()
+
+
+- en la funtion agrego esto para ver la suposicion actual
+
+	*const formatGuess = () => {
+	    console.log('formatting the guess - ', currentGuess)
+	}
+
+
+Video*6
+- Cuando presionamos enter, hace toda la verificacion de los caracteres de la palabra que ingreso el usuario, presionamos enter y activamos la funcion formatGuess () 
+- El trabajo que ahce formatGuess() es tomar el intento actual que es una cadena y verifica cada letra individualmente contra la palabra de la solucion y luego aplique un color a cada letra en consecuencia(verde- amarillo - negro)
+
+- Dentro de FormatGuess() creamos una variable llamada solutionArray que va a ser igual a un array que tomamos de la soulcion y la distribuimos usando PROPAGACION([...solution])
+- por debajo creamos una variable llamada formattedGuess que va a ser igual al dato que va a devolver esta funcion, esta va a ser igual a el estado del intento actual([...currentGuess]
+- Quiero que cada letra sea un objeto en el que podamos tener una propiedad clave que seria la letra en sí. Y tambien una propiedad Color.
+- Utilizo map en el array para mapear en un nuevo array
+- este map activa una nueva funcion para cada letra y en su return quiero devolver un objeto con una propiedad clave(key) y ese valor sera l(ele); tambien quiero una propiedad de color, por defoult lo ponemos gris(grey)
+	
+*   let solutionArray = [...solution]
+    let formattedGuess = [...currentGuess].map((l) => {
+      return {key: l, color: 'grey'}
+    })
+
+-Vamos a colorear la posicion correcta 
+, tengo que tomar el intento formateadoy usar para cada metodo en él y esto recorre el array obtenido, esta funcion va a aceptar dos argumentos, a) el objeto en si que estamos interando actualmente
+b) el indice de ese objeto en el array 
+- esta funcion verifica si la letra o la clave del intento concide con la letra en la misma posicion en el array de la solucion.
+
+  const formatGuess = () => {
+    console.log('formatting the guess - ', currentGuess)
+    let solutionArray = [...solution]
+    let formattedGuess = [...currentGuess].map((l) => {
+      return {key: l, color: 'grey'}
+    })
+
+    // find any green letters
+    formattedGuess.forEach((l, i) => {
+      if (solution[i] === l.key) {
+        formattedGuess[i].color = 'green'
+        solutionArray[i] = null
+      }
+    })
+    
+    // find any yellow letters
+    formattedGuess.forEach((l, i) => {
+      if (solutionArray.includes(l.key) && l.color !== 'green') {
+        formattedGuess[i].color = 'yellow'
+        solutionArray[solutionArray.indexOf(l.key)] = null
+      }
+    })
+
+    return formattedGuess
+  }
+
+
+
+
+Video*7
+-Lo que tenemos que hacer es agregar ese intento formateado al estado de intentos que definimos en la parte superior del hook => [guesses, setGuesses] = useState([]) , primero para empezar es un array vacio, que luego cada vez que el usuario envia una nuevo intento, formateamos ese intento,  podemos agregar ese intento en el array de intentos, de esta manera vamos a tener un array con todos los intentos que hizo el usuario.
+-Tambien queremos agregar 1 al turno y reestablecer el estado de invitado actual. Todo eso se hace en la addNewGuess=()=>{} 
+
+- Tenemos que invocar la funcion adentro de la const handelKeyup y al fondo de la condicion de presionar enter=> const formatted = formatGuess()
+														 addNewGuess(formatted)
+														 console.log(formatted)
+- Y pasamos como argumento el intento formateado =>addNewGuess(formatted)
+
+- Tambien hay que aceptar el argumento en la funcion=> const addNewGuess = (formattedGuess) => {}
+- Lo primero que hago es hacer una verificacion, si el intento actual del usuario es igual a la solucion correcta , en ese caso los usuarios ganaron y tenemos que cambiar el estado de setIsCorrect(true)
+- Cambio es estado inicial de intento para definir que solo hay como maximo 6 intentos=> const [guesses, setGuesses] = useState([...Array(6)]) 
+- Queremos usar el intento para actualizar el array de intentos y que se cambie el undefined del cada elemento del array a medida que disparo intentos, hay que pasar una funcion como argumento para devolver los nuevos estados, y dentro de esa funcion podemos aceptar como argumento el estamos previo del intento, lo primero es crear una nueva variable llamada newGuesses, que sea igual a un array que tenga todos los intentos previos=> let newGuesses = [...prevGuesses]  
+- Luego queremos tomar este nuevo array de intentos y actualizar la correcta posicion en ese array, que esta se defino con el valor del turno, este comienza con el valor 0 para depues ser 1 , 2 , 3 etc=>      newGuesses[turn] = formattedGuess  y depues tenemos que devolver la nueva variable del intento=>     return newGuesses
+-Cada vez que agrego un nuevo intento queremos altualizar el estado del historial, para ello pasamos la funcion como parametro para saber el historial anterior=> setHistory(prevHistory)  y queremos retornar un nuevo array, que tomará lo previo al historial y pero luego tambien queremos añadir un elemento mas que es el intento actual =>     return [...prevHistory, currentGuess]
+- Queremos agregar un turno, tomamos el turno previo, y retornamos el nuevo turno + 1
+- Queda restablecer el intento actual, para que el usuario pueda volver a jugar e volver a intentar=>  setCurrentGuess('')
+
+  const addNewGuess = (formattedGuess) => {
+    if (currentGuess === solution) {
+      setIsCorrect(true)
+    }
+    setGuesses(prevGuesses => {
+      let newGuesses = [...prevGuesses]
+      newGuesses[turn] = formattedGuess
+      return newGuesses
+    })
+    setHistory(prevHistory => {
+      return [...prevHistory, currentGuess]
+    })
+    setTurn(prevTurn => {
+      return prevTurn + 1
+    })
+    setCurrentGuess('')
+  }
+
+- Voy a Wordle.js
+- Quiero mostrar todos los intentos dentro de Wordle.js, recordamos que en el useWordle retornavamos los intentos. Usando el hook en Wordle.js, agregoo lo que quiero tomar, tambien si la solucion es correcta y el turno=>   const { currentGuess, guesses, turn, isCorrect, handleKeyup } = useWordle(solution)
+- uso un useEffect para ver que estas dependencias cambiar
+
+  useEffect(() => {
+    console.log(guesses, turn, isCorrect)
+  }, [guesses, turn, isCorrect]) 
+
+
+
+Video*8
+- Ya tenemos la logica del juego, ahora vamos a mostrar los intentos en la pantalla, tenemos 6 casillas x 5 intentos, uno por cada letra
+- Creamos el componente Grid.js
+- Creamos el componente Row.js
+- inserto <Grid/> dentro de el componente Wordle.js, y le paso unas props para que esten disponibles dentro del los componentes de grid
+	*      <Grid guesses={guesses} currentGuess={currentGuess} turn={turn} />
+
+- Voy a Grid.js y aceptamos como prop=> Grid({ guesses, currentGuess, turn })
+-Ahora queremos mapear todos los intentos ahí, adentro del div del return entre llaves, paso parametros de g* y de i(index) 
+- Retorno <Row/> y necesito pasarle la key con el {i}  
+
+
+export default function Grid({ guesses, currentGuess, turn }) {
+  return (
+    <div>
+      {guesses.map((g, i) => {
+        return <Row key={i} /> 
+      })}
+    </div>
+  )
+}
+
+
+-Voy al componente Row.js, creamos 5 divs para las casillas 
+export default function Row() {
+
+  return (
+    <div className="row">
+      <div></div>
+      <div></div>
+      <div></div>
+      <div></div>
+      <div></div>
+    </div>
+  )
+  
+}
+
+- Doy estilos a las casillas en el archivo CSS
+
+
+
+Video*9
+- Ya tenemos la cuadricula(grid) y falta que se pinten las palabras en la grilla
+- En el componente <Grid/> ya tenemos el array de intentos en ese componente como prop y ese array siempre va a tener una longitud de 6 
+- Cada vez que el usuario manda un intento, formateamos el intento y la agregamos al array de intentos donde sobreescribe uno de los valores indefined para ese turno en particular 
+- A medida que mapeamos los intentos se genera un componente <Row/> de una sola fila para cada intento, tenemos acceso a cada intento(g) que todos tiene una key(g) 
+- Tenemos que pasar ese intento a la fila como una prop, llamamos a la prop=> guess={g} 
+
+export default function Grid({ guesses, currentGuess, turn }) {
+  return (
+    <div>
+      {guesses.map((g, i) => {
+        return <Row key={i} guess={g}/> 
+      })}
+    </div>
+  )
+}
+
+
+- Luego tenemos que aceptar la prop de guess en el componente <Row/> para que podamos usarlo, hay q destructurarlo entre {}
+	*export default function Row({ guess }) {}
+
+- Despues lo que queremos hacer es verificer el valor de esta prop, si tiene valor y no esta definido, entonces quiero tomar ese ciclo de valor del intento a travez de los objetos de letras dentro de él y mostrarlos en una fila, si no tiene valor simplemente creamos las celdas de las filas vacias. 
+
+- la validacion dice que si el intento tiene valor entonces devuelvo una plantilla diferente
+- el div tambien tendra una clase pasado(past) en caso de que necesitemos cambiar el estilo de esta fila anterior
+- Queremos tomar cada letra del intento y y generarla en cada cuadrado de esa fila, para eso vamos a mapear el intento(ya era un array de objetos de letras) 
+- Mapeo y dentro pasamos una funcion para devolver una plantilla para cada elemento de ese array, tambien obtengo el acceso a la letra(l) y al indice(i)
+-Despues queremos generar un div que tenga su key, su clase y que letra es => <div key={i} className={l.color}>{l.key}</div>
+
+  if (guess) {
+    return (
+      <div className="row past">
+        {guess.map((l, i) => (
+          <div key={i} className={l.color}>{l.key}</div>
+        ))}
+      </div>
+    )
+  }
+
+Video*10
+- El problema que tengo ahora es que no estamos generando el automatico de la letra en cada cubo a medida que la ingresamos antes de enviarla 
+- En el componente Grid.js y tomamos el intento actual que ya tenemos (currentGuess) como prop y queremos pasar eso al componente de la fila<Row/> 
+-Adentro de la seccion que estamos mapeando el intento hago una verificacion , si el turno es igual al index del array de intentos, quiero devolver una plantilla diferente, y todavia quiero devolver un componente de fila para poder generarlo, atambien quiero pasar la clave a la fila y tambien quierop pasar una prop del intento actual  
+
+export default function Grid({ guesses, currentGuess, turn }) {
+  return (
+    <div>
+      {guesses.map((g, i) => {
+        if (turn === i) {
+          return <Row key={i} currentGuess={currentGuess} />
+        }
+        return <Row key={i} guess={g} /> 
+      })}
+    </div>
+  )
+}
+
+- Tenemos que aceptar el intento en el componente  Row.js
+	* export default function Row({ guess, currentGuess }) {}
+- Lo que queremos hacer despues  es verificar la prop del intento actual. Decimos si el intento actial, pero antes de retornar algo , primero quiero tomar el intento actual, que es un string y quiero convertirlo en un array de letras que podamos iterar, vamos a dividir la palabra y colocar cada letra individual en su propio espacio en el array llamado letters 
+	* 	    let letters = currentGuess.split('')
+- Vamos a retornar un <div> con una clase actual (current)
+- Queremos mapear para generar un cuadrado en cada una 
+- Lo que nos falta es que siempre esten los 5 cuadrados, al mapear me va mostrando a medida que apreto la tecla, vamos a generar cuadrados vacios dependiendo de cuantos falten para compeltar los 5, esto siempre sera 5 menos la cantaidad de letras que ta tenemos. Para esto vamos a hacer un array entre parentesis 5 menos la longitud de las letras, para que la funcion devielva una plantilla, tomara el valor y el index y retornamos un div con la key(i)
+- 
+
+    return (
+      <div className="row current">
+        {letters.map((letter, i) => (
+          <div key={i} className="filled">{letter}</div>
+        ))}
+        {[...Array(5 - letters.length)].map((_,i) => (
+          <div key={i}></div>
+        ))}
+      </div>
+    )
+
+
+
+Video*11 Animaciones CSS
+
+
+Video*12 Animaciones 2 CSS
+
+Video*13 
+-Quiero hacer un teclado que se ubicara debajo con las letras en colores dependiendo si ya fue ubicada o no, gris claro (no se toco) , gris oscuro(se toco), verde (lugar exacto), amarillo(esta en la solucion
+ - inicialmente tengo que dibujar el teclado por debajo de las celdas de los futuros intentos
+- Creamos un componente Keypad.js y lo primero es crear un estado para las letras que vamos a mostrar en la pantalla=> const [letters, setLetters] = useState(null)
+- tenemos que tener todas las letras en el archivo db.json 
+- hacemos la llamada para traer las letras las letras(objetos) de la db.json con un useEffect, que adentro tiene una funcion y esta funcipn se activara cuando carguemos el componente por primera vez, por lo que tendra una dependencia vacia[]. Adentro un fectch con la llamada al puerto 3001, con el nombre del recurso(letters)
+- Queremos recorrer y retornar las letras en un cuadrado para cada una, creamos un div con su clase
+- inicialmente las letras(estado) son null , y cuando son null no queremos usar un metodo map por que da un error => {letters && letters.map()} primero nos aceguramos que haya letras y despues las mapeamos, adentro tenemos acceso a la letra(l) y lo que queremos es devolver una plantilla que paraq cada letra quiero un div, que despues va a tener logica, por eso va con llaves{}, cada div tiene que tener una prop key que es igual a la tecla(l.key), y queremos mostrar tambien la key ya que es unica en el archivo 
+
+export default function Keypad() {
+  const [letters, setLetters] = useState(null)
+
+  useEffect(() => {
+    fetch('http://localhost:3001/letters')
+      .then(res => res.json())
+      .then(json => {
+        setLetters(json)
+      })
+  }, [])
+
+  return (
+  <div className="keypad">
+    {letters && letters.map((l,i) => {
+      return (
+        <div key={i}>{l.letter}</div>
+      )
+    })}
+ </div>
+  )
+}
+
+
+- voy a Wordle.js e inserto <Keypad/> debajo del grid y lo importamos, se tendrian que mostrar las letras en la pantalla
+- Agregamos estilos en el css Keypad
+
+
+
+Video*14
+- Queremos reflejar los colores de las letras escritas en el keypad, con su color correspondiente
+- Vamos al hook useWordle.js
+- Agregamos un nuevo estado, que el valor inicial sea un objeto vacio=>   const [usedKeys, setUsedKeys] = useState({}) , lo queremos actualizar cada vez que el usuario hace un nuevo intento 
+- vamos a agregar una funcion dentro de addNewsGuess donde reestablecemos el intento actual, y queremos tener el conjunto de letras usadas y colorearlas, necesitamos pasar una funcion que tome ese estado previo como un argumento y dentro de esta funcioin necesito retornar un nuevo valor que sea las claves usadas, creo un variable newKeys, que es igual a un objeto y luego voy a traer todos los estados previos 
+
+
+    setUsedKeys(prevUsedKeys => {
+      formattedGuess.forEach(l => {
+        const currentColor = prevUsedKeys[l.key]
+
+        if (l.color === 'green') {
+          prevUsedKeys[l.key] = 'green'
+          return
+        }
+        if (l.color === 'yellow' && currentColor !== 'green') {
+          prevUsedKeys[l.key] = 'yellow'
+          return
+        }
+        if (l.color === 'grey' && currentColor !== ('green' || 'yellow')) {
+          prevUsedKeys[l.key] = 'grey'
+          return
+        }
+      })
+
+      return prevUsedKeys
+    })
+
+
+
+
+
+
